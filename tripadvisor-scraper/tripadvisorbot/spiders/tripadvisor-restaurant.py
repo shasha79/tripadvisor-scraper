@@ -14,7 +14,7 @@ from tripadvisorbot.spiders.crawlerhelper import *
 # Reviews collected are around: 5 * MAX_REVIEWS_PAGES
 MAX_REVIEWS_PAGES = 1
 # Max search result pages
-MAX_SEARCH_RESULT_PAGES = 1
+MAX_SEARCH_RESULT_PAGES = 2
 
 
 
@@ -26,6 +26,14 @@ class TripAdvisorRestaurantBaseSpider(BaseSpider):
 	start_urls = [
 		base_uri + "/Restaurants-g293984-Tel_Aviv_Tel_Aviv_District.html"
 	]
+
+	xpath = {
+		'search_results' : '//div[@id="EATERY_SEARCH_RESULTS"]/div[starts-with(@class, "listing")]',
+		'rest_url' : 'div[@class="shortSellDetails"]/h3/a[@class="property_title"]/@href',
+		'rest_name' : 'div[@class="shortSellDetails"]/h3/a[@class="property_title"]/text()',
+		'next_search_page' : '//a[starts-with(@class, "nav next rndBtn")]/@href',
+
+	}
 
 
 	# Entry point for BaseSpider.
@@ -43,19 +51,18 @@ class TripAdvisorRestaurantBaseSpider(BaseSpider):
 		# Build item index.
 		for snode_restaurant in snode_restaurants:
 
-			tripadvisor_item = TripAdvisorItem()
+			try:
+				tripadvisor_item = TripAdvisorItem()
 
-			tripadvisor_item['url'] = self.base_uri + clean_parsed_string(get_parsed_string(snode_restaurant, 'div[@class="shortSellDetails"]/h3/a[@class="property_title"]/@href'))
-			tripadvisor_item['name'] = clean_parsed_string(get_parsed_string(snode_restaurant, 'div[@class="shortSellDetails"]/h3/a[@class="property_title"]/text()'))
+				tripadvisor_item['url'] = self.base_uri + clean_parsed_string(get_parsed_string(snode_restaurant, 'div[@class="shortSellDetails"]/h3/a[@class="property_title"]/@href'))
+				tripadvisor_item['name'] = clean_parsed_string(get_parsed_string(snode_restaurant, 'div[@class="shortSellDetails"]/h3/a[@class="property_title"]/text()'))
 			
-			# Cleaning string and taking only the first part before whitespace.
-			snode_restaurant_item_avg_stars = clean_parsed_string(get_parsed_string(snode_restaurant, 'div[@class="shortSellDetails"]/div[@class="rating"]/span[starts-with(@class, "rate")]/img[@class="sprite-ratings"]/@alt'))
-			tripadvisor_item['avg_stars'] = re.match(r'(\S+)', snode_restaurant_item_avg_stars).group()
+				# Popolate reviews and address for current item.
+				yield Request(url=tripadvisor_item['url'], meta={'tripadvisor_item': tripadvisor_item}, callback=self.parse_search_page)
 
-			# Popolate reviews and address for current item.
-			yield Request(url=tripadvisor_item['url'], meta={'tripadvisor_item': tripadvisor_item}, callback=self.parse_search_page)
-
-			tripadvisor_items.append(tripadvisor_item)
+				tripadvisor_items.append(tripadvisor_item)
+			except:
+				pass
 			#break
 		# Find the next page link if available and go on.
 		next_page_url = clean_parsed_string(get_parsed_string(sel, '//a[starts-with(@class, "nav next rndBtn")]/@href'))
