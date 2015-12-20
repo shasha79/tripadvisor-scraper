@@ -36,7 +36,7 @@ class TripAdvisorReviewItem(Item):
 	description = Field()
 	stars = Field()
 	helpful_votes = Field()
-
+	place_name = Field()
 	user = Field()
 
 class TripAdvisorUserItem(Item):
